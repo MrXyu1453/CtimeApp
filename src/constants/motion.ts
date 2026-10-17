@@ -1,12 +1,11 @@
-import { Easing } from 'react-native-reanimated';
+import { cubicBezier, Easing } from 'react-native-reanimated';
 
 /**
- * Reanimated's built-ins are as weak as CSS's. These are the tuned curves in the two
- * forms the library needs: CSS strings for transition props, Easing for withTiming.
+ * Curve for `transitionTimingFunction`. Only the `cubicBezier()` object works on both runtimes:
+ * native rejects a CSS string there with a fatal `[Reanimated] Invalid predefined timing function`,
+ * while react-native-web serializes this object back into `cubic-bezier(...)`.
  */
-export const CSS_EASE_UI = 'cubic-bezier(0.23, 1, 0.32, 1)';
-export const CSS_EASE_MOVE = 'cubic-bezier(0.77, 0, 0.175, 1)';
-export const CSS_EASE_SHEET = 'cubic-bezier(0.32, 0.72, 0, 1)';
+export const EASE_UI = cubicBezier(0.23, 1, 0.32, 1);
 
 export const TIMING_EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 export const TIMING_MOVE = Easing.bezier(0.77, 0, 0.175, 1);

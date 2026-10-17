@@ -9,7 +9,7 @@ import { AmbientBackdrop } from '@/components/glass';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { CSS_EASE_UI, DURATION } from '@/constants/motion';
+import { EASE_UI, DURATION } from '@/constants/motion';
 import { CATEGORY_MAP } from '@/lib/catalog';
 import {
   addDays,
@@ -316,7 +316,7 @@ function ChartBar({
               : {
                   transitionProperty: 'transform' as const,
                   transitionDuration: DURATION.chart,
-                  transitionTimingFunction: CSS_EASE_UI,
+                  transitionTimingFunction: EASE_UI,
                 }),
           },
         ]}>

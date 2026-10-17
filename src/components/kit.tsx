@@ -11,7 +11,7 @@ import Animated, {
 
 import { ThemedText } from './themed-text';
 
-import { CSS_EASE_UI, DURATION, TIMING_EASE_OUT } from '@/constants/motion';
+import { EASE_UI, DURATION, TIMING_EASE_OUT } from '@/constants/motion';
 import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { selectionHaptic, impactHaptic } from '@/lib/haptics';
 import { useEnter } from '@/hooks/use-enter';
@@ -23,7 +23,7 @@ const pressRest = {
   // so a tap reads as a single gesture instead of two effects.
   transitionProperty: 'all',
   transitionDuration: DURATION.press,
-  transitionTimingFunction: CSS_EASE_UI,
+  transitionTimingFunction: EASE_UI,
 } as const;
 
 const pressActive = { transform: [{ scale: 0.97 }] } as const;
@@ -36,7 +36,7 @@ const barFillBase = {
   bottom: 0,
   transitionProperty: 'width',
   transitionDuration: DURATION.chart,
-  transitionTimingFunction: CSS_EASE_UI,
+  transitionTimingFunction: EASE_UI,
 } as const;
 
 type Haptic = 'none' | 'select' | 'light' | 'medium';
@@ -65,7 +65,8 @@ export function PressableScale({
   hitSlop,
 }: {
   children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
+  /** Applied to the inner Animated.View, so it must accept Reanimated's CSS transition props. */
+  style?: React.ComponentProps<typeof Animated.View>['style'];
   outerStyle?: StyleProp<ViewStyle>;
   onPress?: () => void;
   onLongPress?: () => void;
@@ -111,7 +112,7 @@ export function Card({
   layout,
 }: {
   children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
+  style?: React.ComponentProps<typeof Animated.View>['style'];
   accent?: string;
   /** faint category wash behind the content, so rows read as grouped without extra chrome */
   tint?: string;
@@ -143,10 +144,10 @@ export function Card({
 }
 
 const colorFade = {
-  transitionProperty: 'backgroundColor, borderColor',
-  transitionDuration: '240ms',
-  transitionTimingFunction: CSS_EASE_UI,
-} as const;
+  transitionProperty: ['backgroundColor', 'borderColor'] as ('backgroundColor' | 'borderColor')[],
+  transitionDuration: ['240ms', '240ms'] as '240ms'[],
+  transitionTimingFunction: [EASE_UI, EASE_UI],
+};
 
 /**
  * One-shot sheen sweep across a gradient surface. Fires on an action the user just took
@@ -274,7 +275,7 @@ export function Tag({ label, color }: { label: string; color: string }) {
 const pillSlide = {
   transitionProperty: 'left',
   transitionDuration: DURATION.toggle,
-  transitionTimingFunction: CSS_EASE_UI,
+  transitionTimingFunction: EASE_UI,
 } as const;
 
 const pillStill = { transitionProperty: 'none' } as const;

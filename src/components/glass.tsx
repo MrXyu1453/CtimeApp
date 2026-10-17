@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useRef, type RefObject } from 'react';
-import { Platform, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewProps } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewProps, type ViewProps } from 'react-native';
 import { BlurTargetView, BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -8,6 +8,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  type AnimatedScrollViewProps,
   type SharedValue,
 } from 'react-native-reanimated';
 
@@ -96,9 +97,11 @@ export function AmbientBackdrop() {
  * Scroll-linked hairline for a sticky glass header. Only opacity, written on the UI thread —
  * a React render per frame here would stutter the moment the list scrolls.
  *
- * Reanimated's shared scroll handler is only wired into `ScrollView` on native; react-native-web
- * calls `props.onScroll(...)` directly and throws on the handler object, so web gets a plain
- * callback. Writing a shared value from it still costs no React render.
+ * The two runtimes need pairing on the view side too, so this hands back both halves. Reanimated's
+ * handler is an object that only `Animated.ScrollView` knows how to plug in; core `ScrollView` calls
+ * `props.onScroll(...)` as a function and throws on the first scroll. react-native-web has no UI
+ * thread to receive the worklet, so it keeps the core view and a plain callback — writing a shared
+ * value from that still costs no React render.
  */
 export function useScrollChrome() {
   const edge = useSharedValue(0);
@@ -110,6 +113,18 @@ export function useScrollChrome() {
   });
   const web = useWebScrollHandler(edge);
   return { edge, scrollHandler: Platform.OS === 'web' ? web : native };
+}
+
+type ChromeScrollProps = Omit<ScrollViewProps, 'onScroll'> & {
+  onScroll: NonNullable<ReturnType<typeof useScrollChrome>['scrollHandler']>;
+};
+
+export function ChromeScrollView({ onScroll, ...rest }: ChromeScrollProps) {
+  return Platform.OS === 'web' ? (
+    <ScrollView onScroll={onScroll as ScrollViewProps['onScroll']} {...rest} />
+  ) : (
+    <Animated.ScrollView onScroll={onScroll as AnimatedScrollViewProps['onScroll']} {...rest} />
+  );
 }
 
 function useWebScrollHandler(edge: SharedValue<number>) {
@@ -133,7 +148,9 @@ const styles = StyleSheet.create({
   // The blobs bleed past the screen on purpose; clipping keeps that bleed from creating a
   // document-level scroll on web, which would slide the whole screen out from under the header.
   backdrop: { overflow: 'hidden' },
-  blobTop: { position: 'absolute', left: -60, top: -80, width: 260, height: 260, opacity: 0.55 },
-  blobRight: { position: 'absolute', right: -70, top: 90, width: 220, height: 300, opacity: 0.45 },
-  blobBottom: { position: 'absolute', left: 20, bottom: -60, width: 300, height: 240, opacity: 0.4 },
+  // Ellipses, not rects: a linear gradient only fades along its axis, so the perpendicular
+  // edges of a rectangular blob land as hard visible seams on the wash underneath.
+  blobTop: { position: 'absolute', left: -60, top: -80, width: 320, height: 320, borderRadius: 160, opacity: 0.5 },
+  blobRight: { position: 'absolute', right: -90, top: 90, width: 300, height: 380, borderRadius: 190, opacity: 0.4 },
+  blobBottom: { position: 'absolute', left: -30, bottom: -90, width: 380, height: 300, borderRadius: 150, opacity: 0.36 },
 });

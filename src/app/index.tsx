@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BlockFormSheet } from '@/components/block-form';
 import { TaskFormSheet } from '@/components/task-form';
 import { Button, Card, Chip, EmptyState, GradientCard, ProgressBar, PressableScale, SectionTitle, Tag } from '@/components/kit';
-import { AmbientBackdrop, ChromeDivider, GlassPanel, GlassTarget, useScrollChrome } from '@/components/glass';
+import { AmbientBackdrop, ChromeDivider, GlassPanel, GlassTarget, useScrollChrome, ChromeScrollView } from '@/components/glass';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -75,7 +75,7 @@ export default function TodayScreen() {
         <GlassTarget style={StyleSheet.absoluteFill}>
           <AmbientBackdrop />
 
-          <ScrollView
+          <ChromeScrollView
             onScroll={scrollHandler}
             scrollEventThrottle={16}
             contentContainerStyle={[styles.scroll, { paddingTop: headerH + Spacing.four }]}
@@ -221,7 +221,7 @@ export default function TodayScreen() {
           <View style={styles.footerActions}>
             <Button label="+ 新任务" variant="ghost" onPress={() => setSheet({ kind: 'task' })} style={styles.grow} />
           </View>
-        </ScrollView>
+        </ChromeScrollView>
         </GlassTarget>
 
         <GlassPanel

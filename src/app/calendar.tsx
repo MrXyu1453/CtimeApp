@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AmbientBackdrop, ChromeDivider, GlassPanel, GlassTarget, useScrollChrome } from '@/components/glass';
+import { AmbientBackdrop, ChromeDivider, GlassPanel, GlassTarget, useScrollChrome, ChromeScrollView } from '@/components/glass';
 import { Button, Card, Chip, EmptyState, PressableScale, SectionTitle } from '@/components/kit';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { CSS_EASE_UI, DURATION } from '@/constants/motion';
+import { EASE_UI, DURATION } from '@/constants/motion';
 import { CATEGORY_MAP } from '@/lib/catalog';
 import {
   addMonths,
@@ -164,7 +164,7 @@ export default function CalendarScreen() {
         <GlassTarget style={StyleSheet.absoluteFill}>
           <AmbientBackdrop />
 
-          <ScrollView
+          <ChromeScrollView
             onScroll={scrollHandler}
             scrollEventThrottle={16}
             contentContainerStyle={[styles.scroll, { paddingTop: headerH + Spacing.four }]}
@@ -292,7 +292,7 @@ export default function CalendarScreen() {
                 {durationLabel(monthStats.plannedMin)}，其中真正专注 {durationLabel(monthStats.focusMin)}。
               </ThemedText>
             </Card>
-          </ScrollView>
+          </ChromeScrollView>
         </GlassTarget>
 
         <GlassPanel
@@ -376,7 +376,7 @@ function DayCellView({
 
       {focus > 0 ? (
         <View style={[styles.focusTrack, { backgroundColor: `${theme.accent}26` }]}>
-          <View
+          <Animated.View
             style={[
               styles.focusFill,
               !reduced && focusGrow,
@@ -404,16 +404,16 @@ function Metric({ label, value, color }: { label: string; value: string; color?:
 }
 
 const cellFade = {
-  transitionProperty: 'backgroundColor, borderColor',
-  transitionDuration: DURATION.toggle,
-  transitionTimingFunction: CSS_EASE_UI,
-} as const;
+  transitionProperty: ['backgroundColor', 'borderColor'] as ('backgroundColor' | 'borderColor')[],
+  transitionDuration: [DURATION.toggle, DURATION.toggle] as '200ms'[],
+  transitionTimingFunction: [EASE_UI, EASE_UI],
+};
 
 /** The fill is absolutely positioned and childless, so `width` here costs no sibling relayout. */
 const focusGrow = {
   transitionProperty: 'width',
   transitionDuration: DURATION.chart,
-  transitionTimingFunction: CSS_EASE_UI,
+  transitionTimingFunction: EASE_UI,
 } as const;
 
 const styles = StyleSheet.create({

@@ -204,6 +204,7 @@ const styles = StyleSheet.create({
   grabberZone: { alignItems: 'center', paddingTop: Spacing.two, gap: Spacing.one },
   grabber: { width: 42, height: 5, borderRadius: Radius.pill },
   sheetHeader: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
