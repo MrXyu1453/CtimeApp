@@ -68,7 +68,7 @@ npx expo-doctor
 
 ### 路线 A：本机 Gradle（不用 EAS / Expo 账号）
 
-工具链全部装在 F:（刻意不占 C 盘）：
+
 
 | 用途 | 路径 |
 | --- | --- |
