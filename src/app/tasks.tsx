@@ -8,13 +8,14 @@ import { Button, Card, EmptyState, PressableScale, Segmented, Tag } from '@/comp
 import { AmbientBackdrop, ChromeDivider, GlassPanel, GlassTarget, useScrollChrome, ChromeScrollView } from '@/components/glass';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { CATEGORY_MAP, PRIORITY_MAP } from '@/lib/catalog';
 import { daysBetween, dueLabel, durationLabel, minToLabel, todayKey } from '@/lib/date';
 import { successHaptic, warningHaptic } from '@/lib/haptics';
 import { blocksOn, useStore } from '@/lib/store';
 import type { Task } from '@/lib/types';
 import { useEnter, useReflow } from '@/hooks/use-enter';
+import { useSystemInsets } from '@/hooks/use-system-insets';
 import { useTheme } from '@/hooks/use-theme';
 
 type Filter = 'open' | 'today' | 'overdue' | 'done';
@@ -27,6 +28,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 export default function TasksScreen() {
+  const insets = useSystemInsets();
   const enter = useEnter();
   const reflow = useReflow();
   const tasks = useStore((s) => s.tasks);
@@ -81,13 +83,21 @@ export default function TasksScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <GlassTarget style={StyleSheet.absoluteFill}>
           <AmbientBackdrop />
           <ChromeScrollView
             onScroll={scrollHandler}
             scrollEventThrottle={16}
-            contentContainerStyle={[styles.scroll, { paddingTop: headerH + Spacing.four }]}
+            contentContainerStyle={[
+              styles.scroll,
+              {
+                paddingTop: insets.top + headerH + Spacing.four,
+                paddingBottom: insets.footer + Spacing.five,
+                paddingLeft: Spacing.three + insets.left,
+                paddingRight: Spacing.three + insets.right,
+              },
+            ]}
             showsVerticalScrollIndicator={false}>
             <View style={styles.intro}>
               <View style={styles.summary}>
@@ -131,7 +141,11 @@ export default function TasksScreen() {
 
         <GlassPanel
           onLayout={(e) => setHeaderH(Math.ceil(e.nativeEvent.layout.height))}
-          style={[styles.floatHeader, styles.chrome]}
+          style={[
+            styles.floatHeader,
+            { top: insets.top, left: Spacing.three + insets.left, right: Spacing.three + insets.right },
+            styles.chrome,
+          ]}
           padded={false}>
           <View style={styles.floatTitle}>
             <ThemedText type="subtitle">任务</ThemedText>
@@ -278,7 +292,7 @@ function SummaryPill({ label, value, tone }: { label: string; value: number; ton
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', justifyContent: 'center' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth, paddingHorizontal: Spacing.three },
-  floatHeader: { position: 'absolute', left: Spacing.three, right: Spacing.three, top: 0 },
+  floatHeader: { position: 'absolute' },
   chrome: {
     shadowColor: '#0B1220',
     shadowOpacity: 0.12,
@@ -295,7 +309,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     gap: 2,
   },
-  scroll: { gap: Spacing.two, paddingHorizontal: Spacing.three, paddingBottom: BottomTabInset + Spacing.five },
+  scroll: { gap: Spacing.two },
   floatTitle: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.one },
   row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'flex-start' },
   rowBody: { flex: 1 },

@@ -9,7 +9,7 @@ Expo + React Native，iOS / Android / Web 同一套代码，数据只存在设�
   「自动排程」会按优先级、截止时间、预计时长，把未排任务贪心填进当天的空闲窗口（今天的排程不会落在过去的时间点）。
 - **日历**：月视图的「日程地图」。每格的底色深浅＝当天计划时长（相对本月最满的那一天，不是绝对小时数，否则真实数据下每格都是一样的淡色），底部细条＝当天实际专注，格子内小圆点＝占时长最多的三个分类，右上角数字＝当天到期的待办数，强调色药丸＝今天，2px 描边＝选中的那天。顶部吸顶栏用 `‹ ›` 翻月（翻页会把选中的「几号」带过去，月底自动截断），点月份标题回到本月。选中日下方展开当天明细（计划/专注/完成/到期 + 时间块列表），一键跳到今日页编排这天（共享 `selectedDate`）。页尾「本月地图」给出计划/专注/到期/完成汇总、最满的一天、执行率，以及有排程的天数占比。
 - **任务**：标题 / 备注 / 分类 / 优先级（高中低）/ 预计时长 / 截止日期，支持「全部待办 · 今天 · 逾期 · 已完成」筛选，并显示每条任务是否已被排入日程（`已排 HH:MM` / `未排入日程`）。
-- **专注**：番茄钟。倒计时以绝对截止时间（`endAt`）计算，切后台、杀进程再打开都不会漂秒；专注结束自动进入休息并记录一轮，可提前停止（按实际分钟数记为 partial）。iOS / Android 会发送本地通知（网页端不会）。
+- **专注**：番茄钟。倒计时以绝对截止时间（`endAt`）计算，切后台、熄屏、杀进程再打开都不会漂秒；到点结算由全局引擎在任何页面按真实墙钟完成（休息从专注实际结束、而不是 App 被唤醒的时刻起算），可提前停止（按实际分钟数记为 partial）。iOS / Android 会发送本地通知（网页端不会）。计时页可进入「息屏显示」：纯黑常亮的大字倒计时，每秒只更新文字、不跑动画，轻触任意位置退出。
 - **复盘**：本周 / 上周 / 本月区间的专注时长、轮次、计划时长、完成任务与完成率，计划 vs 实际的柱状对比、分类时间去向、以及基于数据的建议；同一页可调整专注/休息时长、每天的计划起止时间，并切换外观（跟随系统 / 活力白天 / 素白 / 夜航）。
 
 ## 动效体系
@@ -78,7 +78,10 @@ npx expo-doctor
 | `GRADLE_USER_HOME` | `F:\Android\.gradle` |
 
 ```bash
-# 1. 生成原生工程（android/ 由 expo prebuild 生成，不要手写）
+# 0. 改过图标/启动图才需要：从 scripts/app-icon-art.mjs 的 SVG 几何重出全部 PNG
+node scripts/gen-app-icon.mjs
+
+# 1. 生成原生工程（android/ 由 expo prebuild 生成，不要手写；图标会被转成 mipmap-* 的自适应三层）
 npx expo prebuild --platform android --no-clean --no-install
 
 # 2. 打 release APK（只编 arm64-v8a，包体更小）
@@ -91,12 +94,12 @@ gradle assembleRelease -PreactNativeArchitectures=arm64-v8a --console=plain
 # 产物：android/app/build/outputs/apk/release/app-release.apk（拷到 builds/ 下方便分发）
 ```
 
-本机已产出的包：`builds/ctime-v1.0.0-arm64-v8a.apk`（47 MB，`com.ctime.app` 1.0.0 / versionCode 1，minSdk 24、targetSdk 36，只含 arm64-v8a，已含 `expo-blur` 原生模块、磨玻璃界面、五个标签页（今日 · 日历 · 任务 · 专注 · 复盘）、不含紫色的日间配色，以及网页预览的底部标签栏修复；`builds/` 已在 `.gitignore` 里）。
+本机已产出的包：`builds/ctime-v1.0.4-arm64-v8a.apk`（47 MB，`com.ctime.app` 1.0.4 / versionCode 4，minSdk 24、targetSdk 36，只含 arm64-v8a，已含 `expo-blur` 原生模块、磨玻璃界面、五个标签页（今日 · 日历 · 任务 · 专注 · 复盘）、按墙钟结算的专注计时与息屏显示、不含紫色的日间配色；`builds/` 已在 `.gitignore` 里，旧版本包也留在同一目录）。
 
 安装到手机：把 APK 传过去直接点开（需在系统里允许「安装未知应用」），或连着数据线执行
 
 ```bash
-/f/Android/Sdk/platform-tools/adb.exe install -r builds/ctime-v1.0.0-arm64-v8a.apk
+/f/Android/Sdk/platform-tools/adb.exe install -r builds/ctime-v1.0.4-arm64-v8a.apk
 ```
 
 两个必须保留的 workaround，都在 `F:\Android\.gradle` 里（仓库外，换机器要重建）：
@@ -127,10 +130,10 @@ src/
                   # sheet(可拖拽底部弹层) · timer-ring(SVG 进度环) · task-form · block-form · app-tabs(.web) · themed-*
   constants/      # theme：三套配色 + Glass/Ambient/Gradients、间距、圆角、字号 · motion：时长/缓动曲线/回弹与惯性投影
   hooks/          # use-theme(usePalette/useTheme/useGradients/useGlass/useAmbient) · use-color-scheme
-                  # use-enter(错峰入场、瞬时元素、重排过渡)
+                  # use-enter(错峰入场、瞬时元素、重排过渡) · use-system-insets(状态栏/挖孔/手势条留白)
   lib/            # types · catalog · date · schedule(排程算法与统计) · store(zustand 持久化) · notifications · haptics
 assets/           # 图标、启动图、底部标签图标
-scripts/          # 用 sharp 生成 PNG 图标
+scripts/          # app-icon-art(图标 SVG 几何，唯一真源) · gen-app-icon(sharp 出全部 PNG) · contrast-audit
 ```
 
 数据模型与持久化都在 `src/lib/store.ts`，storage key 为 `ctime-store-v1`；「复盘 → 清空所有数据」会重置它。
@@ -139,6 +142,7 @@ scripts/          # 用 sharp 生成 PNG 图标
 
 - v1 只有本地存储，没有多设备同步。
 - 通知为本地通知。Android 12+ 未申请精确闹钟权限，系统可能把提醒延后几分钟。
+- 第三方 App 无法在系统级 AOD（真正熄屏后由系统绘制的那层）上作画；这里的「息屏显示」是 App 内的纯黑常亮环境屏，只在 App 位于前台时生效。
 - Web 端用于开发预览，`Alert` 在 react-native-web 上不可用，因此所有确认操作都改成了页内两步确认。
 - `builds/*.apk` 只含 arm64-v8a（现代手机均可），用 debug keystore 签名，未装到真机验证过安装与运行时行为。
 - 磨玻璃的真实质感（Android 上 `dimezisBlurViewSdk31Plus` 的采样、模糊边缘、掉帧情况）无法在浏览器里判断——网页端只是 CSS `backdrop-filter` 近似，必须在 release 包 + 量产机上验收。

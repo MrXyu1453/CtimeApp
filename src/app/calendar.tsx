@@ -8,7 +8,7 @@ import { AmbientBackdrop, ChromeDivider, GlassPanel, GlassTarget, useScrollChrom
 import { Button, Card, Chip, EmptyState, PressableScale, SectionTitle } from '@/components/kit';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { EASE_UI, DURATION } from '@/constants/motion';
 import { CATEGORY_MAP } from '@/lib/catalog';
 import {
@@ -26,6 +26,7 @@ import {
 import { blocksOn, useStore } from '@/lib/store';
 import type { CategoryId } from '@/lib/types';
 import { useEnter } from '@/hooks/use-enter';
+import { useSystemInsets } from '@/hooks/use-system-insets';
 import { useTheme } from '@/hooks/use-theme';
 
 type DayCell = {
@@ -50,6 +51,7 @@ function heat(color: string, alpha: number): string {
 
 export default function CalendarScreen() {
   const theme = useTheme();
+  const insets = useSystemInsets();
   const reduced = useReducedMotion();
   const enter = useEnter(6);
   const tasks = useStore((s) => s.tasks);
@@ -160,14 +162,22 @@ export default function CalendarScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <GlassTarget style={StyleSheet.absoluteFill}>
           <AmbientBackdrop />
 
           <ChromeScrollView
             onScroll={scrollHandler}
             scrollEventThrottle={16}
-            contentContainerStyle={[styles.scroll, { paddingTop: headerH + Spacing.four }]}
+            contentContainerStyle={[
+              styles.scroll,
+              {
+                paddingTop: insets.top + headerH + Spacing.four,
+                paddingBottom: insets.footer + Spacing.five,
+                paddingLeft: Spacing.three + insets.left,
+                paddingRight: Spacing.three + insets.right,
+              },
+            ]}
             showsVerticalScrollIndicator={false}>
             <View style={styles.weekHead}>
               {WEEK_HEAD.map((label, i) => (
@@ -297,7 +307,11 @@ export default function CalendarScreen() {
 
         <GlassPanel
           onLayout={(e) => setHeaderH(Math.ceil(e.nativeEvent.layout.height))}
-          style={[styles.floatHeader, styles.chrome]}
+          style={[
+            styles.floatHeader,
+            { top: insets.top, left: Spacing.three + insets.left, right: Spacing.three + insets.right },
+            styles.chrome,
+          ]}
           padded={false}>
           <View style={styles.monthNav}>
             <Chip label="‹" small haptic="light" accessibilityLabel="上一月" onPress={() => shiftMonth(-1)} />
@@ -419,7 +433,7 @@ const focusGrow = {
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', justifyContent: 'center' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth, paddingHorizontal: Spacing.three },
-  floatHeader: { position: 'absolute', left: Spacing.three, right: Spacing.three, top: 0 },
+  floatHeader: { position: 'absolute' },
   chrome: {
     shadowColor: '#0B1220',
     shadowOpacity: 0.12,
@@ -429,7 +443,7 @@ const styles = StyleSheet.create({
   monthNav: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, justifyContent: 'space-between' },
   monthPressable: { flex: 1, alignItems: 'center', gap: 2 },
   monthText: { fontSize: 19, lineHeight: 25, fontWeight: '700' },
-  scroll: { gap: Spacing.two, paddingHorizontal: Spacing.three, paddingBottom: BottomTabInset + Spacing.five },
+  scroll: { gap: Spacing.two },
   weekHead: { flexDirection: 'row', gap: Spacing.one },
   weekHeadText: { flex: 1, textAlign: 'center', fontSize: 11 },
   weekRow: { flexDirection: 'row', gap: Spacing.one },

@@ -40,6 +40,8 @@ export interface FocusSession {
   title: string;
   category: CategoryId;
   startedAt: number;
+  /** wall-clock moment the phase was settled; may be long before the app woke up */
+  endedAt?: number;
   plannedMin: number;
   /** completed minutes; 0 while running */
   actualMin: number;
@@ -49,7 +51,7 @@ export interface FocusSession {
 export interface FocusTimer {
   phase: 'focus' | 'break';
   running: boolean;
-  /** absolute deadline while running; time spent is derived from `remainingSec` */
+  /** absolute deadline while running; all elapsed time is derived from it, never accumulated ticks */
   endAt: number;
   plannedMin: number;
   /** seconds left, meaningful while paused */

@@ -8,7 +8,7 @@ import { Button, Card, Chip, ProgressBar, SectionTitle, Segmented, Stepper, Tag 
 import { AmbientBackdrop } from '@/components/glass';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { EASE_UI, DURATION } from '@/constants/motion';
 import { CATEGORY_MAP } from '@/lib/catalog';
 import {
@@ -27,6 +27,7 @@ import { useStore } from '@/lib/store';
 import type { Appearance } from '@/lib/types';
 import { warningHaptic } from '@/lib/haptics';
 import { useEnter, useTransient } from '@/hooks/use-enter';
+import { useSystemInsets } from '@/hooks/use-system-insets';
 import { useGradients, useTheme } from '@/hooks/use-theme';
 
 type Range = 'thisWeek' | 'lastWeek' | 'thisMonth';
@@ -49,6 +50,7 @@ const CHART_HEIGHT = 96;
 export default function StatsScreen() {
   const theme = useTheme();
   const gradients = useGradients();
+  const insets = useSystemInsets();
   const reduced = useReducedMotion();
   const enter = useEnter(4);
   const tasks = useStore((s) => s.tasks);
@@ -78,14 +80,16 @@ export default function StatsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <AmbientBackdrop />
         <View style={styles.header}>
           <ThemedText type="subtitle">复盘</ThemedText>
           <Segmented items={RANGES} value={range} onChange={setRange} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.footer + Spacing.five }]}
+          showsVerticalScrollIndicator={false}>
           <View style={styles.metricGrid}>
             <Metric label="专注时长" value={durationLabel(summary.focusMin)} accent={theme.accent} entering={enter(0)} />
             <Metric label="专注轮次" value={`${summary.sessions} 轮`} entering={enter(1)} />
@@ -377,7 +381,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, maxWidth: MaxContentWidth, paddingHorizontal: Spacing.three },
   header: { paddingTop: Spacing.three, paddingBottom: Spacing.two, gap: Spacing.two },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, alignItems: 'center' },
-  scroll: { gap: Spacing.two, paddingBottom: BottomTabInset + Spacing.five },
+  scroll: { gap: Spacing.two },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   metric: { minWidth: 140, flex: 1 },
   chartRow: { gap: Spacing.three, paddingVertical: Spacing.two, alignItems: 'flex-end' },

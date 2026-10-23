@@ -41,7 +41,8 @@ interface State {
   resumeFocus: () => void;
   stopFocus: () => void;
   completePhase: () => void;
-  skipBreak: () => void;
+  /** Rolls an expired phase forward from its real deadline, even if the app slept through it. */
+  settleTimer: () => void;
 
   setSelectedDate: (date: string) => void;
   updateSettings: (patch: Partial<Settings>) => void;
@@ -69,23 +70,34 @@ const idleTimer = (settings: Settings): FocusTimer => ({
   cycle: 0,
 });
 
-export function remainingSec(timer: FocusTimer): number {
-  if (!timer.running) return Math.max(0, timer.remainingSec);
-  return Math.max(0, Math.round((timer.endAt - Date.now()) / 1000));
+export function remainingMs(timer: FocusTimer, now = Date.now()): number {
+  if (!timer.running) return Math.max(0, timer.remainingSec * 1000);
+  return Math.max(0, timer.endAt - now);
+}
+
+/** Ceil so a countdown only shows 00:00 once the phase is actually over. */
+export function remainingSec(timer: FocusTimer, now = Date.now()): number {
+  return Math.ceil(remainingMs(timer, now) / 1000);
 }
 
 /** Time already spent in the current phase, derived so backgrounding cannot drift it. */
-export function spentSec(timer: FocusTimer): number {
-  return Math.max(0, timer.plannedMin * 60 - remainingSec(timer));
+export function spentSec(timer: FocusTimer, now = Date.now()): number {
+  return Math.max(0, Math.round((timer.plannedMin * 60_000 - remainingMs(timer, now)) / 1000));
 }
 
-function sessionFrom(timer: FocusTimer, status: FocusSession['status'], actualMin: number): FocusSession {
+function sessionFrom(
+  timer: FocusTimer,
+  status: FocusSession['status'],
+  actualMin: number,
+  endedAt = Date.now(),
+): FocusSession {
   return {
     id: uid('ses'),
     taskId: timer.taskId,
     title: timer.title || '自由专注',
     category: timer.category,
-    startedAt: timer.startedAt || Date.now(),
+    startedAt: timer.startedAt || endedAt,
+    endedAt,
     plannedMin: timer.plannedMin,
     actualMin,
     status,
@@ -182,9 +194,12 @@ export const useStore = create<State>()(
       },
 
       pauseFocus: () => {
-        const timer = get().timer;
-        if (!timer.running) return;
-        set({ timer: { ...timer, running: false, remainingSec: remainingSec(timer) } });
+        const before = get().timer;
+        if (!before.running) return;
+        // A deadline can pass between the last tick and the tap; settle instead of pausing at 00:00.
+        get().settleTimer();
+        if (get().timer !== before) return;
+        set({ timer: { ...before, running: false, remainingSec: remainingSec(before) } });
       },
 
       resumeFocus: () => {
@@ -196,22 +211,27 @@ export const useStore = create<State>()(
       },
 
       stopFocus: () => {
-        const timer = get().timer;
-        const minutes = Math.floor(spentSec(timer) / 60);
+        const before = get().timer;
+        get().settleTimer();
+        // Already rolled into the next phase: touching it now would double-book the round.
+        if (get().timer !== before) return;
+        const minutes = Math.floor(spentSec(before) / 60);
         const sessions =
-          timer.phase === 'focus' && minutes >= 1
-            ? [...get().sessions, sessionFrom(timer, 'stopped', minutes)]
+          before.phase === 'focus' && minutes >= 1
+            ? [...get().sessions, sessionFrom(before, 'stopped', minutes)]
             : get().sessions;
-        set({ sessions, timer: { ...idleTimer(get().settings), cycle: timer.cycle } });
+        set({ sessions, timer: { ...idleTimer(get().settings), cycle: before.cycle } });
       },
 
       completePhase: () => {
-        const timer = get().timer;
+        const before = get().timer;
+        get().settleTimer();
+        if (get().timer !== before || before.startedAt === 0) return;
         const settings = get().settings;
-        if (timer.phase === 'focus') {
+        if (before.phase === 'focus') {
           const now = Date.now();
           set({
-            sessions: [...get().sessions, sessionFrom(timer, 'done', timer.plannedMin)],
+            sessions: [...get().sessions, sessionFrom(before, 'done', before.plannedMin, now)],
             timer: {
               phase: 'break',
               running: true,
@@ -219,19 +239,52 @@ export const useStore = create<State>()(
               plannedMin: settings.breakMin,
               remainingSec: settings.breakMin * 60,
               startedAt: now,
-              taskId: timer.taskId,
-              title: timer.title,
-              category: timer.category,
-              cycle: timer.cycle + 1,
+              taskId: before.taskId,
+              title: before.title,
+              category: before.category,
+              cycle: before.cycle + 1,
             },
           });
           return;
         }
-        set({ timer: { ...idleTimer(settings), cycle: timer.cycle } });
+        set({ timer: { ...idleTimer(settings), cycle: before.cycle } });
       },
 
-      skipBreak: () => {
-        const { timer, settings } = get();
+      settleTimer: () => {
+        const timer = get().timer;
+        if (!timer.running) return;
+        const now = Date.now();
+        if (now < timer.endAt) return;
+        const settings = get().settings;
+        const endedAt = timer.endAt;
+
+        if (timer.phase === 'focus') {
+          const session = sessionFrom(timer, 'done', timer.plannedMin, endedAt);
+          const breakEndAt = endedAt + settings.breakMin * 60_000;
+          if (now < breakEndAt) {
+            set({
+              sessions: [...get().sessions, session],
+              timer: {
+                phase: 'break',
+                running: true,
+                endAt: breakEndAt,
+                plannedMin: settings.breakMin,
+                remainingSec: Math.ceil((breakEndAt - now) / 1000),
+                // The break started when focus actually ended, not when the app woke up.
+                startedAt: endedAt,
+                taskId: timer.taskId,
+                title: timer.title,
+                category: timer.category,
+                cycle: timer.cycle + 1,
+              },
+            });
+          } else {
+            // The whole break elapsed while the app was away; nothing is left to run.
+            set({ sessions: [...get().sessions, session], timer: { ...idleTimer(settings), cycle: timer.cycle + 1 } });
+          }
+          return;
+        }
+
         set({ timer: { ...idleTimer(settings), cycle: timer.cycle } });
       },
 
@@ -240,9 +293,13 @@ export const useStore = create<State>()(
       updateSettings: (patch) => {
         const settings = { ...get().settings, ...patch };
         const timer = get().timer;
+        // A started phase keeps its own length; only an untouched timer follows the setting.
         set({
           settings,
-          timer: timer.running ? timer : { ...timer, plannedMin: settings.focusMin, remainingSec: settings.focusMin * 60 },
+          timer:
+            timer.startedAt === 0
+              ? { ...timer, plannedMin: settings.focusMin, remainingSec: settings.focusMin * 60 }
+              : timer,
         });
       },
 

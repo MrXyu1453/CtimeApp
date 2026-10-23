@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from './themed-text';
 import { PressableScale } from './kit';
@@ -44,6 +45,7 @@ export function Sheet({
   children: React.ReactNode;
 }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const translateY = useSharedValue(0);
   const context = useSharedValue(0);
@@ -137,7 +139,7 @@ export function Sheet({
               entering={reduced ? undefined : FadeInUp.duration(260).delay(90)}
               style={styles.sheetBody}>
               <ScrollView
-                contentContainerStyle={styles.sheetContent}
+                contentContainerStyle={[styles.sheetContent, { paddingBottom: Spacing.six + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
                 scrollEnabled={!dragging}>
                 {children}
@@ -214,7 +216,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { fontSize: 24, lineHeight: 32 },
   sheetBody: { flexShrink: 1 },
-  sheetContent: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.six, gap: Spacing.three },
+  sheetContent: { paddingHorizontal: Spacing.three, gap: Spacing.three },
   field: { gap: Spacing.one },
   input: {
     borderRadius: Radius.md,

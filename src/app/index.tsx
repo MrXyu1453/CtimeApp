@@ -9,13 +9,14 @@ import { Button, Card, Chip, EmptyState, GradientCard, ProgressBar, PressableSca
 import { AmbientBackdrop, ChromeDivider, GlassPanel, GlassTarget, useScrollChrome, ChromeScrollView } from '@/components/glass';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { CATEGORY_MAP, PRIORITY_MAP } from '@/lib/catalog';
 import { addDays, dayHeadline, durationLabel, minToLabel, nowMin, todayKey, weekdayLabel } from '@/lib/date';
 import { blocksOn, openTasksUnplaced, useStore } from '@/lib/store';
 import type { Block, Task } from '@/lib/types';
 import { successHaptic } from '@/lib/haptics';
 import { useEnter, useReflow, useTransient } from '@/hooks/use-enter';
+import { useSystemInsets } from '@/hooks/use-system-insets';
 import { useGradients, useTheme } from '@/hooks/use-theme';
 
 type Sheet =
@@ -28,6 +29,7 @@ const SLOT = 30;
 export default function TodayScreen() {
   const theme = useTheme();
   const gradients = useGradients();
+  const insets = useSystemInsets();
   const enter = useEnter();
   const reflow = useReflow();
   const date = useStore((s) => s.selectedDate);
@@ -71,14 +73,22 @@ export default function TodayScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <GlassTarget style={StyleSheet.absoluteFill}>
           <AmbientBackdrop />
 
           <ChromeScrollView
             onScroll={scrollHandler}
             scrollEventThrottle={16}
-            contentContainerStyle={[styles.scroll, { paddingTop: headerH + Spacing.four }]}
+            contentContainerStyle={[
+              styles.scroll,
+              {
+                paddingTop: insets.top + headerH + Spacing.four,
+                paddingBottom: insets.footer + Spacing.five,
+                paddingLeft: Spacing.three + insets.left,
+                paddingRight: Spacing.three + insets.right,
+              },
+            ]}
             showsVerticalScrollIndicator={false}>
             <GradientCard colors={gradients.hero} style={styles.hero} sheen={sheen} sheenColors={gradients.sheen}>
               <View style={styles.metrics}>
@@ -226,7 +236,11 @@ export default function TodayScreen() {
 
         <GlassPanel
           onLayout={(e) => setHeaderH(Math.ceil(e.nativeEvent.layout.height))}
-          style={[styles.floatHeader, styles.chrome]}>
+          style={[
+            styles.floatHeader,
+            { top: insets.top, left: Spacing.three + insets.left, right: Spacing.three + insets.right },
+            styles.chrome,
+          ]}>
           <View style={styles.dateNav}>
             <Chip label="‹" small onPress={() => setDate(addDays(date, -1))} />
             <PressableScale
@@ -251,7 +265,7 @@ export default function TodayScreen() {
           <Animated.View
             entering={transient.entering}
             exiting={transient.exiting}
-            style={styles.toastWrap}
+            style={[styles.toastWrap, { bottom: insets.footer + Spacing.four }]}
             pointerEvents="none">
             <GlassPanel radius={Radius.pill} intensity={26} style={styles.toast} padded={false}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.toastText}>
@@ -383,7 +397,7 @@ function GapRow({
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', justifyContent: 'center' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth, paddingHorizontal: Spacing.three },
-  floatHeader: { position: 'absolute', left: Spacing.three, right: Spacing.three, top: 0 },
+  floatHeader: { position: 'absolute' },
   chrome: {
     shadowColor: '#0B1220',
     shadowOpacity: 0.12,
@@ -399,14 +413,13 @@ const styles = StyleSheet.create({
   heroDim: { color: 'rgba(255,255,255,0.82)' },
   metrics: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.one },
   // The scroll view lives in an absolute-fill layer, so it sits under SafeAreaView's padding
-  // and has to carry its own horizontal inset.
-  scroll: { gap: Spacing.two, paddingHorizontal: Spacing.three, paddingBottom: BottomTabInset + Spacing.five },
+  // and has to carry its own inset — the screen adds the system insets on top of these.
+  scroll: { gap: Spacing.two },
   toolbar: { flexDirection: 'row', gap: Spacing.two, alignItems: 'center' },
   toastWrap: {
     position: 'absolute',
     left: Spacing.three,
     right: Spacing.three,
-    bottom: BottomTabInset + Spacing.four,
     alignItems: 'center',
   },
   toast: { maxWidth: '100%' },
